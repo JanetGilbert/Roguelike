@@ -213,6 +213,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1072492962}
   - component: {fileID: 1072492961}
+  - component: {fileID: 1072492963}
   m_Layer: 0
   m_Name: Grid
   m_TagString: Untagged
@@ -247,6 +248,23 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1072492963
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1072492960}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc430d00a56cb4917b65b5a592137c0b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  wall: {fileID: 11400000, guid: a0f3a4b8184fc4683a21369e13434019, type: 2}
+  floor: {fileID: 11400000, guid: 9031dd012eb824092a2b5c6921071d1f, type: 2}
+  door: {fileID: 11400000, guid: 5f25f7b904bb24994aae0b2038dab707, type: 2}
+  maxRooms: 5
+  tileDefs: {fileID: 11400000, guid: 6728fbabccc494411914f7c4048b3456, type: 2}
 --- !u!1 &1479562311
 GameObject:
   m_ObjectHideFlags: 0
