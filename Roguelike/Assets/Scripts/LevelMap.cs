@@ -78,10 +78,8 @@ public class LevelMap
             {
                 roomRects.Add(roomRect);
             }
-
         }
 
-        
         if (roomRects.Count == 0)
         {
             return false; // No rooms generated.
@@ -93,6 +91,22 @@ public class LevelMap
             DrawRect(rect, LevelTileType.Wall);
             DrawRect(new RectInt(rect.x + 1, rect.y + 1, rect.width - 2, rect.height - 2), LevelTileType.Floor);
         }
+
+         // Create paths.
+         foreach (RectInt r in roomRects)
+         {
+             Vector2Int startPos = RandomRectPosition(r);
+             RectInt otherRect =  roomRects[Random.Range(0, roomRects.Count)];
+             Vector2Int endPos = RandomRectPosition(otherRect);
+
+            if (IsValidTile(startPos) && IsValidTile(endPos))
+            {
+                if (CalculateAStar(startPos, endPos))
+                {
+                    DrawPathLine(level[endPos.x, endPos.y]);
+                }
+            }
+         }
 
         return true;
     }
@@ -109,29 +123,37 @@ public class LevelMap
 
     }
 
-    // Generate a random position on a rectangle's edge.
+    // Generate a random position on a rectangle's edge, avoiding corners.
     public Vector2Int RandomRectPosition(RectInt rect)
     {
         Vector2Int pos = new Vector2Int(rect.x, rect.y);
-        int numPositions = (rect.width * 2) + ((rect.height - 2) * 2);
+        int numPositions = (rect.width - 2) + (rect.height - 2);
         int randPos = Random.Range(0, numPositions);
         int curPos = 0;
 
-        for (int x = rect.x; x < rect.xMax; x++)
-        {
-            for (int y = rect.y + 1; x < rect.yMax - 1; y++)
-            {
-                if (curPos == randPos)
-                {
-                    return new Vector2Int(x, y);
-                }
 
-                curPos++;
+        // Horizontal
+        for (int x = rect.x + 1; x < rect.xMax - 1; x++)
+        {
+            if (curPos == randPos)
+            {
+                return new Vector2Int(x, Random.Range(0, 2) == 0? rect.y-1: rect.y+rect.height);               
             }
+            curPos++;
+        }
+
+        // Vertical
+        for (int y = rect.y + 1; y < rect.yMax - 1; y++)
+        {
+            if (curPos == randPos)
+            {
+                return new Vector2Int(Random.Range(0, 2) == 0 ? rect.x-1 : rect.x + rect.width, y);
+            }
+            curPos++;
         }
 
 
-        return pos;
+        return new Vector2Int(0,0); // Should never get here
     }
 
     // Is the rectangle blocked on the board?
@@ -154,8 +176,6 @@ public class LevelMap
     // Draw a rectangle to the board.
     public void DrawRect(RectInt rect, LevelTileType tileType)
     {
-        Debug.Log(rect.ToString());
-
         for (int x = rect.x; x < rect.x + rect.width; x++)
         {
             for (int y = rect.y; y < rect.y + rect.height; y++)
@@ -163,6 +183,17 @@ public class LevelMap
                 level[x, y].type = tileType;
                 
             }
+        }
+    }
+
+    private void DrawPathLine(AStarTile endTile)
+    {
+        AStarTile curTile = endTile;
+
+        while (curTile != null)
+        {
+            level[curTile.pos.x, curTile.pos.y].type = LevelTileType.Corridor;
+            curTile = curTile.prev;
         }
     }
 
@@ -174,7 +205,7 @@ public class LevelMap
 
 
     // Find the path to the destination using the A* algorithm.
-    private bool CalculateAStar(Vector2Int startPos, Vector2Int endPos, bool emptySpace)
+    private bool CalculateAStar(Vector2Int startPos, Vector2Int endPos)
     {
         AStarTile start = level[startPos.x, startPos.y];
         AStarTile end = level[endPos.x, endPos.y];
@@ -222,7 +253,7 @@ public class LevelMap
             foreach (Vector2Int dir in allDirections)
             {
                 Vector2Int pos = current.pos + dir;
-                if (IsValidTile(pos, emptySpace)) // Check that it is possible to move to the tile.
+                if (IsValidTile(pos)) // Check that it is possible to move to the tile.
                 {
                     if (!closed.Contains(level[pos.x, pos.y])) // Make sure the tile hasn't been already checked.
                     {
@@ -260,26 +291,16 @@ public class LevelMap
     }
 
     // Is the position on the board, and not blocked?
-    public bool IsValidTile(Vector2Int pos, bool emptySpace)
+    public bool IsValidTile(Vector2Int pos)
     {
         if ((pos.x >= 0) &&
             (pos.y >= 0) &&
             (pos.x < GridW) &&
             (pos.y < GridH))
         {
-            if (emptySpace)
+            if (level[pos.x, pos.y].type == LevelTileType.Empty)
             {
-                if (level[pos.x, pos.y].type == LevelTileType.Empty)
-                {
-                    return true;
-                }
-            }
-            else
-            {
-                if (level[pos.x, pos.y].type != LevelTileType.Empty)
-                {
-                    return true;
-                }
+                return true;
             }
         }
 
