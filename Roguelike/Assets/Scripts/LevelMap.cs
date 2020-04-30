@@ -4,13 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public enum LevelTileType { Empty = 0, Corridor = 1, Floor = 2}
+public enum LevelTileType { Empty = 0, Corridor = 1, Floor = 2, Door = 3, Wall = 4}
 
-public struct Room
-{
-    public Vector2Int pos;
-    public Vector2Int size;
-}
 
 public class LevelMap
 {
@@ -35,22 +30,19 @@ public class LevelMap
         }
     }
 
-    private const int maxRoomSize = 10;
-    private const int minRoomSize = 3;
+    private const int maxRoomSize = 10; // todo vary
+    private const int minRoomSize = 4;
 
     // All possible directions. 
     protected readonly Vector2Int[] allDirections =
                                            {Vector2Int.up,
-                                           // Vector2Int.up + Vector2Int.left,
-                                            //Vector2Int.up + Vector2Int.right,
                                             Vector2Int.down,
-                                           // Vector2Int.down + Vector2Int.left,
-                                           // Vector2Int.down + Vector2Int.right,
                                             Vector2Int.left,
                                             Vector2Int.right };
 
-    public void Init(int tilesX, int tilesY, int roomsNumber)
+    public bool Init(int tilesX, int tilesY, int roomsNumber, int minRoomSize, int maxRoomSize)
     {
+        // Create Tile Path grid
         _gridW = tilesX;
         _gridH = tilesY;
 
@@ -64,116 +56,116 @@ public class LevelMap
             }
         }
 
-        List<Room> rooms = new List<Room>();
-        for (int r = 0; r < roomsNumber; r++)
+        // Create rooms
+        List<RectInt> roomRects = new List<RectInt>();
+        int tries = 50;
+
+
+        while (tries > 0 && roomRects.Count < roomsNumber)
         {
-            rooms.Add(PlaceRoom());
+            RectInt roomRect = MakeRoomRect(minRoomSize, maxRoomSize);
+            bool overlap = false;
+
+            for (int compareRoom = 0; compareRoom < roomRects.Count; compareRoom++)
+            {
+                if (roomRect.Overlap(roomRects[compareRoom].Increase(1))) 
+                {
+                    overlap = true;
+                }
+            }
+
+            if (!overlap)
+            {
+                roomRects.Add(roomRect);
+            }
+
         }
 
-        foreach (Room r in rooms)
+        
+        if (roomRects.Count == 0)
         {
-            Vector2Int startDoorPos = GetRoomWallPos(r);
+            return false; // No rooms generated.
+        }
 
-            Room randomRoom = rooms[Random.Range(0, rooms.Count)];
-            Room targetRoom = new Room();
-            targetRoom.pos = new Vector2Int(randomRoom.pos.x - 1, randomRoom.pos.y - 1); // todo check on screen
-            targetRoom.size = new Vector2Int(randomRoom.size.x + 1, randomRoom.size.y + 1);
+        // Write rooms to grid.
+        foreach (RectInt rect in roomRects)
+        {
+            DrawRect(rect, LevelTileType.Wall);
+            DrawRect(new RectInt(rect.x + 1, rect.y + 1, rect.width - 2, rect.height - 2), LevelTileType.Floor);
+        }
 
-            Vector2Int endDoorPos = GetRoomWallPos(targetRoom);
+        return true;
+    }
 
-            bool pathFound = CalculateAStar(startDoorPos, endDoorPos, true);
+    // Generate rect on board.
+    public RectInt MakeRoomRect(int minRoomSize, int maxRoomSize)
+    {
+        int sizeX = Random.Range(minRoomSize, maxRoomSize);
+        int sizeY = Random.Range(minRoomSize, maxRoomSize);
+        int posX = Random.Range(0, GridW - sizeX);
+        int posY = Random.Range(0, GridH - sizeY);
 
-            // Draw path
-            if (pathFound)
+        return new RectInt(posX, posY, sizeX, sizeY);
+
+    }
+
+    // Generate a random position on a rectangle's edge.
+    public Vector2Int RandomRectPosition(RectInt rect)
+    {
+        Vector2Int pos = new Vector2Int(rect.x, rect.y);
+        int numPositions = (rect.width * 2) + ((rect.height - 2) * 2);
+        int randPos = Random.Range(0, numPositions);
+        int curPos = 0;
+
+        for (int x = rect.x; x < rect.xMax; x++)
+        {
+            for (int y = rect.y + 1; x < rect.yMax - 1; y++)
             {
-                AStarTile current = level[endDoorPos.x, endDoorPos.y];
-                while (current.prev != null)
+                if (curPos == randPos)
                 {
-                    current.type = LevelTileType.Corridor;
-                    current = current.prev;
+                    return new Vector2Int(x, y);
+                }
+
+                curPos++;
+            }
+        }
+
+
+        return pos;
+    }
+
+    // Is the rectangle blocked on the board?
+    public bool CheckRectBlocked(RectInt rect)
+    {
+        for (int x = rect.x; x < rect.x + rect.width; x++)
+        {
+            for (int y = rect.y; x < rect.y + rect.height; y++)
+            {
+                if (level[x, y].type != LevelTileType.Empty)
+                {
+                    return true;
                 }
             }
         }
+
+        return false;
     }
 
-    private Vector2Int GetRoomWallPos(Room room)
+    // Draw a rectangle to the board.
+    public void DrawRect(RectInt rect, LevelTileType tileType)
     {
-        int squares = (room.size.x + (room.size.y - 1)) * 2;
-        int randSquare = Random.Range(0, squares);
+        Debug.Log(rect.ToString());
 
-        // Top
-        if (randSquare < room.size.x)
+        for (int x = rect.x; x < rect.x + rect.width; x++)
         {
-            return new Vector2Int(Random.Range(room.pos.x, room.pos.x + room.size.x), room.pos.y);
+            for (int y = rect.y; y < rect.y + rect.height; y++)
+            {
+                level[x, y].type = tileType;
+                
+            }
         }
-
-        randSquare -= room.size.x;
-
-        // Bottom
-        if (randSquare < room.size.x)
-        {
-            return new Vector2Int(Random.Range(room.pos.x, room.pos.x + room.size.x), room.pos.y + room.size.y - 1);
-        }
-
-        randSquare -= room.size.x;
-
-        // Left
-        if (randSquare < room.size.y)
-        {
-            return new Vector2Int(room.pos.x, Random.Range(room.pos.x, room.pos.y + room.size.y));
-        }
-
-        // Right
-        return new Vector2Int(room.pos.x + room.size.x - 1, Random.Range(room.pos.y, room.pos.y + room.size.y));
-
     }
 
-    private Room PlaceRoom()
-    {
-        //int roomSizeX, roomSizeY, roomPosX, roomPosY;
-        Room room = new Room();
-        bool isOK;
-
-        do
-        {
-            isOK = true;
-
-            room.size.x = Random.Range(minRoomSize, maxRoomSize);
-            room.size.y = Random.Range(minRoomSize, maxRoomSize);
-            room.pos.x = Random.Range(0, _gridW);
-            room.pos.y = Random.Range(0, _gridH);
-
-            if (room.pos.x + room.size.x >= _gridW || room.pos.y + room.size.y >= _gridH)
-            {
-                isOK = false;
-            }
-
-            if (isOK)
-            {
-                for (int x = room.pos.x; x < room.pos.x + room.size.x; x++)
-                {
-                    for (int y = room.pos.y; y < room.pos.y + room.size.y; y++)
-                    {
-                        if (level[x, y].type != LevelTileType.Empty)
-                        {
-                            isOK = false;
-                        }
-                    }
-                }
-            }
-        } while (!isOK);
-
-
-        for (int x = room.pos.x; x < room.pos.x + room.size.x; x++)
-        {
-            for (int y = room.pos.y; y < room.pos.y + room.size.y; y++)
-            {
-                level[x, y].type = LevelTileType.Floor;
-            }
-        }
-
-        return room;
-    }
 
     public LevelTileType GetTileType(int x, int y)
     {
@@ -262,22 +254,6 @@ public class LevelMap
                 }
             }
         }
-
-        // Build display path.
-        /*  pathTiles = new List<Tile>();
-
-
-          if (open.Contains(end))
-          {
-              current = end;
-              while (current.prev != null)
-              {
-                  pathTiles.Add(current.displayTile);
-                  current = current.prev;
-              }
-
-              pathTiles.Reverse(); // Reverse display path as it is built from the destination to the start.
-          }*/
 
  
         return open.Contains(end);

@@ -16,6 +16,10 @@ MonoBehaviour:
   - type: 0
     tile: {fileID: 11400000, guid: a14723d08ad3a4872a7007ed1bd4922f, type: 2}
   - type: 1
-    tile: {fileID: 11400000, guid: a0f3a4b8184fc4683a21369e13434019, type: 2}
-  - type: 2
     tile: {fileID: 11400000, guid: 9031dd012eb824092a2b5c6921071d1f, type: 2}
+  - type: 2
+    tile: {fileID: 11400000, guid: 0e6dbe62b850446eeb30531efa557ce1, type: 2}
+  - type: 3
+    tile: {fileID: 11400000, guid: 5f25f7b904bb24994aae0b2038dab707, type: 2}
+  - type: 4
+    tile: {fileID: 11400000, guid: a0f3a4b8184fc4683a21369e13434019, type: 2}
