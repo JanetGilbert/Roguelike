@@ -92,27 +92,93 @@ public class LevelMap
             DrawRect(new RectInt(rect.x + 1, rect.y + 1, rect.width - 2, rect.height - 2), LevelTileType.Floor);
         }
 
-         // Create paths.
-         foreach (RectInt r in roomRects)
-         {
-             Vector2Int startPos = RandomRectPosition(r);
-             RectInt otherRect =  roomRects[Random.Range(0, roomRects.Count)];
-             Vector2Int endPos = RandomRectPosition(otherRect);
+        // Create paths.
+        /*if (roomRects.Count > 1)
+        {
+            foreach (RectInt r in roomRects)
+            {
+                Vector2Int startPos = RandomRectPosition(r);
+                RectInt otherRect = roomRects[Random.Range(0, roomRects.Count)];
+
+                while (otherRect.position == r.position)
+                {
+                    otherRect = roomRects[Random.Range(0, roomRects.Count)];
+                }
+
+                Vector2Int endPos = FindNearestPointOnRect(startPos, otherRect);
+
+                if (IsValidTile(startPos) && IsValidTile(endPos))
+                {
+                    if (CalculateAStar(startPos, endPos))
+                    {
+                        DrawPathLine(level[endPos.x, endPos.y]);
+                    }
+                }
+            }
+        }*/
+
+        for (int r = 0; r < roomRects.Count; r++)
+        {
+            int rNext = r + 1;
+            if (rNext >= roomRects.Count)
+            {
+                rNext = 0;
+            }
+
+            RectInt curRect = roomRects[r];
+            RectInt nextRect = roomRects[rNext];
+
+           // Vector2Int startPos = RandomRectPosition(curRect);
+           // Vector2Int endPos = FindNearestPointOnRect(startPos, nextRect);
+
+            Vector2Int startPos, endPos;
+            FindNearestPoints(curRect, nextRect, out startPos, out endPos);
 
             if (IsValidTile(startPos) && IsValidTile(endPos))
             {
                 if (CalculateAStar(startPos, endPos))
                 {
                     DrawPathLine(level[endPos.x, endPos.y]);
+
+                    // Draw doors.
+                    Vector2Int startDoorPos = FindDoorPos(curRect, startPos);
+                    Vector2Int endDoorPos = FindDoorPos(nextRect, endPos);
+
+                    level[startDoorPos.x, startDoorPos.y].type = LevelTileType.Door;
+                    level[endDoorPos.x, endDoorPos.y].type = LevelTileType.Door;
                 }
             }
-         }
+
+
+
+        }
+
+
 
         return true;
     }
 
-    // Generate rect on board.
-    public RectInt MakeRoomRect(int minRoomSize, int maxRoomSize)
+    // Given a position next to a wall, find the place on the wall to put the door.
+    private Vector2Int FindDoorPos(RectInt roomWall, Vector2Int pathStart)
+    {
+        foreach (Vector2Int dir in allDirections)
+        {
+            Vector2Int pos = pathStart + dir;
+
+            if (IsTileOnBoard(pos))
+            {
+                if (level[pos.x, pos.y].type == LevelTileType.Wall)
+                {
+                    return pos;
+                }
+            }
+        }
+
+        return pathStart;
+    }
+
+    // Generate room rect.
+    private RectInt MakeRoomRect(int minRoomSize, int maxRoomSize)
     {
         int sizeX = Random.Range(minRoomSize, maxRoomSize);
         int sizeY = Random.Range(minRoomSize, maxRoomSize);
@@ -124,13 +190,12 @@ public class LevelMap
     }
 
     // Generate a random position on a rectangle's edge, avoiding corners.
-    public Vector2Int RandomRectPosition(RectInt rect)
+    private Vector2Int RandomRectPosition(RectInt rect)
     {
         Vector2Int pos = new Vector2Int(rect.x, rect.y);
         int numPositions = (rect.width - 2) + (rect.height - 2);
         int randPos = Random.Range(0, numPositions);
         int curPos = 0;
-
 
         // Horizontal
         for (int x = rect.x + 1; x < rect.xMax - 1; x++)
@@ -156,8 +221,137 @@ public class LevelMap
         return new Vector2Int(0,0); // Should never get here
     }
 
-    // Is the rectangle blocked on the board?
-    public bool CheckRectBlocked(RectInt rect)
+    // Find the nearest point to a rectangle from a starting point.
+    private Vector2Int FindNearestPointOnRect(Vector2Int pos, RectInt rect)
+    {
+        int nearestX = 0;
+        int nearestY = 0;
+        int nearestVal = int.MaxValue;
+
+        for (int x = rect.x + 1; x < rect.xMax - 1; x++)
+        {
+            int y1 = rect.y - 1;
+            int y2 = rect.y + rect.height;
+
+            int val1 = Mathf.Abs(pos.x - x) + Mathf.Abs(pos.y - y1);
+
+            if (val1 < nearestVal)
+            {
+                nearestX = x;
+                nearestY = y1;
+                nearestVal = val1;
+            }
+
+
+            int val2 = Mathf.Abs(pos.x - x) + Mathf.Abs(pos.y - y2);
+
+            if (val2 < nearestVal)
+            {
+                nearestX = x;
+                nearestY = y2;
+                nearestVal = val2;
+            }
+        }
+
+
+        for (int y = rect.y + 1; y < rect.yMax - 1; y++)
+        {
+            int x1 = rect.x - 1;
+            int x2 = rect.x + rect.width;
+
+            int val1 = Mathf.Abs(pos.x - x1) + Mathf.Abs(pos.y - y);
+
+            if (val1 < nearestVal)
+            {
+                nearestX = x1;
+                nearestY = y;
+                nearestVal = val1;
+            }
+
+
+            int val2 = Mathf.Abs(pos.x - x2) + Mathf.Abs(pos.y - y);
+
+            if (val2 < nearestVal)
+            {
+                nearestX = x2;
+                nearestY = y;
+                nearestVal = val2;
+            }
+        }
+
+        return new Vector2Int(nearestX, nearestY);
+    }
+
+    // Find the two closest points on two rectangles.
+    private void FindNearestPoints(RectInt r1, RectInt r2, out Vector2Int foundPos1, out Vector2Int foundPos2)
+    {
+        Vector2Int minPos1 = new Vector2Int(r1.x, r1.y);
+        Vector2Int minPos2 = new Vector2Int(r2.x, r2.y);
+        int minVal = int.MaxValue;
+
+        // Horizontal
+        for (int x = r1.x + 1; x < r1.xMax - 1; x++)
+        {
+            Vector2Int pos1 = new Vector2Int(x, r1.y - 1);
+            Vector2Int pos2 = FindNearestPointOnRect(pos1, r2);
+            int val = Mathf.Abs(pos2.x - pos1.x) + Mathf.Abs(pos2.y - pos1.y);
+
+            if (val < minVal)
+            {
+                minVal = val;
+                minPos1 = pos1;
+                minPos2 = pos2;
+            }
+        }
+        for (int x = r1.x + 1; x < r1.xMax - 1; x++)
+        {
+            Vector2Int pos1 = new Vector2Int(x, r1.y + r1.height);
+            Vector2Int pos2 = FindNearestPointOnRect(pos1, r2);
+            int val = Mathf.Abs(pos2.x - pos1.x) + Mathf.Abs(pos2.y - pos1.y);
+
+            if (val < minVal)
+            {
+                minVal = val;
+                minPos1 = pos1;
+                minPos2 = pos2;
+            }
+        }
+
+        // Vertical
+        for (int y = r1.y + 1; y < r1.yMax - 1; y++)
+        {
+            Vector2Int pos1 = new Vector2Int(r1.x - 1, y);
+            Vector2Int pos2 = FindNearestPointOnRect(pos1, r2);
+            int val = Mathf.Abs(pos2.x - pos1.x) + Mathf.Abs(pos2.y - pos1.y);
+
+            if (val < minVal)
+            {
+                minVal = val;
+                minPos1 = pos1;
+                minPos2 = pos2;
+            }
+        }
+        for (int y = r1.y + 1; y < r1.yMax - 1; y++)
+        {
+            Vector2Int pos1 = new Vector2Int(r1.x + r1.width, y);
+            Vector2Int pos2 = FindNearestPointOnRect(pos1, r2);
+            int val = Mathf.Abs(pos2.x - pos1.x) + Mathf.Abs(pos2.y - pos1.y);
+
+            if (val < minVal)
+            {
+                minVal = val;
+                minPos1 = pos1;
+                minPos2 = pos2;
+            }
+        }
+
+        foundPos1 = minPos1;
+        foundPos2 = minPos2;
+    }
+
+
+    // Can this rectangle be placed?
+    private bool CheckRectBlocked(RectInt rect)
     {
         for (int x = rect.x; x < rect.x + rect.width; x++)
         {
@@ -186,6 +380,7 @@ public class LevelMap
         }
     }
 
+    // Draw a line to the board.
     private void DrawPathLine(AStarTile endTile)
     {
         AStarTile curTile = endTile;
@@ -196,7 +391,6 @@ public class LevelMap
             curTile = curTile.prev;
         }
     }
-
 
     public LevelTileType GetTileType(int x, int y)
     {
@@ -290,7 +484,7 @@ public class LevelMap
         return open.Contains(end);
     }
 
-    // Is the position on the board, and not blocked?
+    // Is the position on the board and not blocked?
     public bool IsValidTile(Vector2Int pos)
     {
         if ((pos.x >= 0) &&
@@ -307,7 +501,21 @@ public class LevelMap
         return false;
     }
 
+    // Is the position on the board
+    public bool IsTileOnBoard(Vector2Int pos)
+    {
+        if ((pos.x >= 0) &&
+            (pos.y >= 0) &&
+            (pos.x < GridW) &&
+            (pos.y < GridH))
+        {
+            return true;
+        }
 
+        return false;
+    }
+
+    // Helper class for A* algorithm.
     private class AStarTile
     {
         public LevelTileType type;
