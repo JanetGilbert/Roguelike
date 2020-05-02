@@ -56,6 +56,62 @@ public class LevelMap
             }
         }
 
+        //DrawRect(new RectInt(0, 0, 5, 5), LevelTileType.Wall);
+
+        /*  List<RectInt> roomRects = new List<RectInt>();
+
+          while (roomRects.Count < roomsNumber)
+          {
+              RectInt roomRect = MakeRoomRect(minRoomSize, maxRoomSize);
+
+              bool overlap = false;
+
+              for (int compareRoom = 0; compareRoom < roomRects.Count; compareRoom++)
+              {
+                  if (roomRect.Overlap(roomRects[compareRoom]))
+                  {
+                      overlap = true;
+                  }
+              }
+
+              if (!overlap)
+              {
+                  roomRects.Add(roomRect);
+              }
+          }
+
+          foreach (RectInt rect in roomRects)
+          {
+              DrawRect(rect, LevelTileType.Floor);
+          }
+
+          Vector2Int rPos = RandomRectPosition(roomRects[0]);
+
+          // level[rPos.x, rPos.y].type = LevelTileType.Door;
+          foreach (RectInt roomRect in roomRects)
+          {
+              int randomRoomIndex = Random.Range(0, roomRects.Count);
+
+              Vector2Int doorPos1 = RandomRectPosition(roomRect);
+              Vector2Int doorPos2 = RandomRectPosition(roomRects[randomRoomIndex]);
+
+
+
+              bool succeeded = CalculateAStar(doorPos1, doorPos2);
+
+              if (succeeded)
+              {
+                  DrawPathLine(level[doorPos2.x, doorPos2.y]);
+              }
+
+              level[doorPos1.x, doorPos1.y].type = LevelTileType.Door;
+              level[doorPos2.x, doorPos2.y].type = LevelTileType.Door;
+
+          }
+          */
+
+        Random.InitState(5);
+
         // Create rooms
         List<RectInt> roomRects = new List<RectInt>();
         int tries = 50;
@@ -68,7 +124,7 @@ public class LevelMap
 
             for (int compareRoom = 0; compareRoom < roomRects.Count; compareRoom++)
             {
-                if (roomRect.Overlap(roomRects[compareRoom].Increase(1))) 
+                if (roomRect.Overlap(roomRects[compareRoom].Increase(1)))
                 {
                     overlap = true;
                 }
@@ -93,30 +149,6 @@ public class LevelMap
         }
 
         // Create paths.
-        /*if (roomRects.Count > 1)
-        {
-            foreach (RectInt r in roomRects)
-            {
-                Vector2Int startPos = RandomRectPosition(r);
-                RectInt otherRect = roomRects[Random.Range(0, roomRects.Count)];
-
-                while (otherRect.position == r.position)
-                {
-                    otherRect = roomRects[Random.Range(0, roomRects.Count)];
-                }
-
-                Vector2Int endPos = FindNearestPointOnRect(startPos, otherRect);
-
-                if (IsValidTile(startPos) && IsValidTile(endPos))
-                {
-                    if (CalculateAStar(startPos, endPos))
-                    {
-                        DrawPathLine(level[endPos.x, endPos.y]);
-                    }
-                }
-            }
-        }*/
-
         for (int r = 0; r < roomRects.Count; r++)
         {
             int rNext = r + 1;
@@ -128,8 +160,8 @@ public class LevelMap
             RectInt curRect = roomRects[r];
             RectInt nextRect = roomRects[rNext];
 
-           // Vector2Int startPos = RandomRectPosition(curRect);
-           // Vector2Int endPos = FindNearestPointOnRect(startPos, nextRect);
+            // Vector2Int startPos = RandomRectPosition(curRect);
+            // Vector2Int endPos = FindNearestPointOnRect(startPos, nextRect);
 
             Vector2Int startPos, endPos;
             FindNearestPoints(curRect, nextRect, out startPos, out endPos);
@@ -152,8 +184,6 @@ public class LevelMap
 
 
         }
-
-
 
         return true;
     }
